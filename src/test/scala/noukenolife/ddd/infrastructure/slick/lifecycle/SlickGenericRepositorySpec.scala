@@ -2,15 +2,14 @@ package noukenolife.ddd.infrastructure.slick.lifecycle
 
 import noukenolife.ddd.domain.api.lifecycle.{EntityNotFoundException, FakeIOContext, IOContext, RepositoryException}
 import noukenolife.ddd.domain.api.model.{FakeEntity, FakeId}
-import noukenolife.ddd.infrastructure.slick.record.FakeRecord
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
 import slick.jdbc.JdbcBackend
 
-import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, ExecutionContext}
 
 class SlickGenericRepositorySpec extends WordSpec with Matchers with BeforeAndAfterAll with ScalaFutures with MockFactory {
 
@@ -100,5 +99,6 @@ class SlickGenericRepositorySpec extends WordSpec with Matchers with BeforeAndAf
   }
 
   override protected def afterAll(): Unit = {
+    db.close()
   }
 }
