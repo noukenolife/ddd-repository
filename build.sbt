@@ -15,5 +15,6 @@ lazy val root = (project in file("."))
       "org.scalatest" %% "scalatest" % "3.0.5" % Test,
       "org.scalamock" %% "scalamock" % "4.1.0" % Test,
       "com.h2database" % "h2" % "1.4.197" % Test
-    )
+    ),
+    parallelExecution in Test := false
   )

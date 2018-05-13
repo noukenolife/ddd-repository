@@ -2,15 +2,13 @@ package noukenolife.ddd.infrastructure.slick.dao
 
 import noukenolife.ddd.infrastructure.slick.exception.RecordNotFoundException
 import noukenolife.ddd.infrastructure.slick.record._
-import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
+import org.scalatest.{AsyncWordSpec, BeforeAndAfterAll, Matchers}
 import slick.jdbc.{H2Profile, JdbcBackend}
 
 import scala.concurrent.Await
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 
-class SlickGenericDAOComponentSpec extends WordSpec with Matchers with BeforeAndAfterAll with ScalaFutures {
+class SlickGenericDAOComponentSpec extends AsyncWordSpec with Matchers with BeforeAndAfterAll {
 
   val db: JdbcBackend#Database = JdbcBackend.Database.forURL(
     url = "jdbc:h2:mem:slick_ddd_repository_test;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false",
@@ -40,33 +38,18 @@ class SlickGenericDAOComponentSpec extends WordSpec with Matchers with BeforeAnd
     "insert a new record" in {
       val record = FakeRecord(1l, "Value")
 
-      whenReady(db.run(comp.dao.insertOrUpdate(record))) {
-        _ shouldEqual 1
-      }
-
-      whenReady(db.run(comp.dao.findById(1l))) {
-        _ shouldEqual record
-      }
+      db.run(comp.dao.insertOrUpdate(record)).map(_ shouldEqual 1)
+      db.run(comp.dao.findById(1l)).map(_ shouldEqual record)
     }
     "update a record" in {
       val record = FakeRecord(1l, "New Value")
 
-      whenReady(db.run(comp.dao.insertOrUpdate(record))) {
-        _ shouldEqual 1
-      }
-
-      whenReady(db.run(comp.dao.findById(1l))) {
-        _ shouldEqual record
-      }
+      db.run(comp.dao.insertOrUpdate(record)).map(_ shouldEqual 1)
+      db.run(comp.dao.findById(1l)).map(_ shouldEqual record)
     }
     "delete a record" in {
-      whenReady(db.run(comp.dao.delete(1l))) {
-        _ shouldEqual 1
-      }
-
-      whenReady(db.run(comp.dao.findById(1l)).failed) { e =>
-        e shouldBe a[RecordNotFoundException]
-      }
+      db.run(comp.dao.delete(1l)).map(_ shouldEqual 1)
+      recoverToSucceededIf[RecordNotFoundException](db.run(comp.dao.findById(1l)))
     }
   }
 

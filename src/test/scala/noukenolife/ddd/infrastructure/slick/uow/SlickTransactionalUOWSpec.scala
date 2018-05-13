@@ -3,14 +3,13 @@ package noukenolife.ddd.infrastructure.slick.unitofwork
 import noukenolife.ddd.domain.api.lifecycle.RepositoryException
 import noukenolife.ddd.domain.api.model.{FakeEntity, FakeId}
 import noukenolife.ddd.infrastructure.slick.lifecycle.FakeSlickH2Repository
-import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
+import org.scalatest.{AsyncWordSpec, BeforeAndAfterAll, Matchers}
 import slick.jdbc.JdbcBackend
 
 import scala.concurrent.Await
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 
-class SlickTransactionalUOWSpec extends WordSpec with Matchers with BeforeAndAfterAll {
+class SlickTransactionalUOWSpec extends AsyncWordSpec with Matchers with BeforeAndAfterAll {
 
   val _db = JdbcBackend.Database.forURL(
     url = "jdbc:h2:mem:slick_ddd_repository_test;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false",
@@ -49,8 +48,8 @@ class SlickTransactionalUOWSpec extends WordSpec with Matchers with BeforeAndAft
         } yield e2
       }
 
-      Await.result(run, Duration.Inf).value shouldEqual "New Value"
-      Await.result(_db.run(repo.dao.rows.result), Duration.Inf) shouldEqual Seq.empty
+      run.map(_.value shouldEqual "New Value")
+      _db.run(repo.dao.rows.result).map(_ shouldEqual Seq.empty)
     }
 
     "rollback on failure" in {
@@ -65,10 +64,8 @@ class SlickTransactionalUOWSpec extends WordSpec with Matchers with BeforeAndAft
         } yield ()
       }
 
-      a[RepositoryException] shouldBe thrownBy {
-        Await.result(run, Duration.Inf)
-      }
-      Await.result(_db.run(repo.dao.rows.result), Duration.Inf) shouldEqual Seq.empty
+      recoverToSucceededIf[RepositoryException](run)
+      _db.run(repo.dao.rows.result).map(_ shouldEqual Seq.empty)
     }
   }
 

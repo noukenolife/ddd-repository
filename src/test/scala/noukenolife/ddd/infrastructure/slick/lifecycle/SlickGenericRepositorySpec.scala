@@ -2,16 +2,14 @@ package noukenolife.ddd.infrastructure.slick.lifecycle
 
 import noukenolife.ddd.domain.api.lifecycle.{EntityNotFoundException, FakeIOContext, IOContext, RepositoryException}
 import noukenolife.ddd.domain.api.model.{FakeEntity, FakeId}
-import org.scalamock.scalatest.MockFactory
-import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
+import org.scalamock.scalatest.AsyncMockFactory
+import org.scalatest.{AsyncWordSpec, BeforeAndAfterAll, Matchers}
 import slick.jdbc.JdbcBackend
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext}
 
-class SlickGenericRepositorySpec extends WordSpec with Matchers with BeforeAndAfterAll with ScalaFutures with MockFactory {
+class SlickGenericRepositorySpec extends AsyncWordSpec with Matchers with BeforeAndAfterAll with AsyncMockFactory {
 
   val db: JdbcBackend#Database = JdbcBackend.Database.forURL(
     url = "jdbc:h2:mem:slick_ddd_repository_test;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false",
@@ -47,27 +45,18 @@ class SlickGenericRepositorySpec extends WordSpec with Matchers with BeforeAndAf
     "store a new entity" in {
       val entity = FakeEntity(FakeId(1l), "Value")
 
-      whenReady(db.run(repo.store(entity)))(_ => succeed)
-
-      whenReady(db.run(repo.resolve(FakeId(1l)))) {
-        _ shouldEqual entity
-      }
+      db.run(repo.store(entity)).map(_ => succeed)
+      db.run(repo.resolve(FakeId(1l))).map(_ shouldEqual entity)
     }
     "update an entity" in {
       val entity = FakeEntity(FakeId(1l), "New Value")
 
-      whenReady(db.run(repo.store(entity)))(_ => succeed)
-
-      whenReady(db.run(repo.resolve(FakeId(1l)))) {
-        _ shouldEqual entity
-      }
+      db.run(repo.store(entity)).map(_ => succeed)
+      db.run(repo.resolve(FakeId(1l))).map(_ shouldEqual entity)
     }
     "delete an entity" in {
-      whenReady(db.run(repo.delete(FakeId(1l))))(_ => succeed)
-
-      whenReady(db.run(repo.resolve(FakeId(1l))).failed) {
-        _ shouldBe a[EntityNotFoundException]
-      }
+      db.run(repo.delete(FakeId(1l))).map(_ => succeed)
+      recoverToSucceededIf[EntityNotFoundException](db.run(repo.resolve(FakeId(1l))))
     }
     "throw repository exception" in {
       val entity = FakeEntity(FakeId(1l), "Value")
@@ -84,17 +73,9 @@ class SlickGenericRepositorySpec extends WordSpec with Matchers with BeforeAndAf
         .when(*)
         .returning(DBIO.failed(new Exception()))
 
-      whenReady(db.run(errorRepo.resolve(FakeId(1l))).failed) {
-        _ shouldBe a[RepositoryException]
-      }
-
-      whenReady(db.run(errorRepo.store(entity)).failed) {
-        _ shouldBe a[RepositoryException]
-      }
-
-      whenReady(db.run(errorRepo.delete(FakeId(1l))).failed) {
-        _ shouldBe a[RepositoryException]
-      }
+      recoverToSucceededIf[RepositoryException](db.run(errorRepo.resolve(FakeId(1l))))
+      recoverToSucceededIf[RepositoryException](db.run(errorRepo.store(entity)))
+      recoverToSucceededIf[RepositoryException](db.run(errorRepo.delete(FakeId(1l))))
     }
   }
 
